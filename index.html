@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>上报信息详情</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-backdrop {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px !important;
+        }
+
+        /* ———— 【全新优化】审核进度时间轴样式 ———— */
+        .step-line {
+            position: absolute;
+            left: 20px;
+            top: 40px;
+            bottom: 0;
+            width: 2px;
+            background: #e5e7eb;
+            z-index: 0;
+            border-radius: 8px;
+        }
+
+        .step-item:last-child .step-line {
+            display: none;
+        }
+
+        .step-active .step-line {
+            background: linear-gradient(to bottom, #1256D4, #e5e7eb);
+        }
+
+        .step-completed .step-line {
+            background: #1256D4;
+        }
+
+        .status-badge {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .hover-lift {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .hover-lift:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+        }
+
+        .severity-indicator {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .severity-indicator::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+        }
+
+        .severity-general::after { background: #f59e0b; }
+        .severity-serious::after { background: #ef4444; }
+        .severity-minor::after { background: #1256D4; }
+
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* 统一圆角 8px */
+        .rounded-8 {
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <button onclick="openModal()" class="bg-white text-[#1256D4] px-6 py-3 rounded-8 font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+        <i class="fas fa-eye mr-2"></i>查看上报详情
+    </button>
+
+    <div id="modal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-backdrop absolute inset-0 transition-opacity duration-300" onclick="closeModal()"></div>
+        
+        <div class="absolute inset-4 md:inset-10 lg:inset-16 flex items-center justify-center pointer-events-none">
+            <div class="glass-card w-full max-w-6xl h-full max-h-[90vh] shadow-2xl pointer-events-auto flex flex-col overflow-hidden transform transition-all duration-300 scale-95 opacity-0" id="modalContent">
+                
+                <div class="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between shrink-0">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-8 bg-blue-50 flex items-center justify-center text-[#1256D4] font-bold text-lg">
+                            张
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-900">上报信息详情</h2>
+                            <p class="text-sm text-gray-500 mt-0.5">张三（欧洲公司）· 负责人</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <span class="status-badge inline-flex items-center gap-2 px-4 py-2 rounded-8 bg-amber-50 text-amber-700 text-sm font-medium border border-amber-200">
+                            <i class="fas fa-clock text-xs"></i>待审核材料
+                        </span>
+                        <button onclick="closeModal()" class="w-8 h-8 rounded-8 hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-hidden flex flex-col lg:flex-row">
+                    
+                    <div class="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
+                        
+                        <!-- 1. 内审计划上报信息 -->
+                        <section class="bg-white border border-gray-200 rounded-8 overflow-hidden hover-lift">
+                            <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                                <i class="fas fa-file-alt text-[#1256D4]"></i>
+                                <h3 class="font-semibold text-gray-800">内审计划上报信息</h3>
+                            </div>
+                            <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="space-y-1">
+                                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">内审计划文档</label>
+                                    <a href="#" class="flex items-center gap-2 text-[#1256D4] hover:underline font-medium">
+                                        <i class="fas fa-file-pdf text-red-500"></i>
+                                        <span>2026年内审计划.pdf</span>
+                                    </a>
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">上传日期</label>
+                                    <div class="flex items-center gap-2 text-gray-700">
+                                        <i class="far fa-calendar text-gray-400"></i>
+                                        <span class="font-medium">2025-09-23</span>
+                                    </div>
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">上传人</label>
+                                    <div class="flex items-center gap-2 text-gray-700">
+                                        <i class="far fa-user text-gray-400"></i>
+                                        <span class="font-medium">张三</span>
+                                    </div>
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">内审实施日期</label>
+                                    <div class="flex items-center gap-2 text-gray-700">
+                                        <i class="far fa-clock text-gray-400"></i>
+                                        <span class="font-medium">2026-01-13</span>
+                                        <span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-8 font-medium">30天内完成</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- 2. 不符合项上报信息 -->
+                        <section class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-1 h-6 bg-[#1256D4] rounded-8"></div>
+                                    <h3 class="font-bold text-gray-800 text-lg">不符合项上报信息</h3>
+                                    <span class="bg-red-50 text-red-600 px-2.5 py-1 rounded-8 text-sm font-semibold border border-red-100">
+                                        不符合 6 项
+                                    </span>
+                                    <span class="bg-blue-50 text-[#1256D4] px-2.5 py-1 rounded-8 text-sm font-semibold border border-blue-200">
+                                        改进建议 7 项
+                                    </span>
+                                </div>
+                                <div>
+                                    <button onclick="toggleAllItems()" class="text-sm text-gray-500 hover:text-[#1256D4] flex items-center gap-1 px-3 py-1.5 rounded-8 hover:bg-gray-100 transition-colors">
+                                        <i class="fas fa-expand-alt"></i>
+                                        <span id="toggleAllText">展开全部</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="ncItemsContainer" class="space-y-3">
+                            </div>
+                        </section>
+
+                        <!-- 3. 内审材料上传信息 -->
+                        <section class="bg-white border border-gray-200 rounded-8 overflow-hidden hover-lift">
+                            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-cloud-upload-alt text-[#1256D4]"></i>
+                                    <h3 class="font-semibold text-gray-800">内审材料上传信息</h3>
+                                </div>
+                                <button class="text-sm text-[#1256D4] hover:opacity-80 font-medium flex items-center gap-1 px-3 py-1 rounded-8 hover:bg-blue-50 transition-colors">
+                                    <i class="fas fa-download"></i>批量下载
+                                </button>
+                            </div>
+                            <div class="divide-y divide-gray-100">
+                                <div class="p-4 flex items-center justify-between group hover:bg-gray-50 transition-colors">
+                                    <div class="flex items-center gap-3">
+                                        <input type="checkbox" class="w-4 h-4 rounded border-gray-300 text-[#1256D4] focus:ring-[#1256D4]">
+                                        <span class="text-gray-400 font-mono text-sm w-8">1</span>
+                                        <i class="fas fa-file-word text-blue-500 text-lg"></i>
+                                        <span class="font-medium text-gray-700">分支机构基本情况及变更信息表</span>
+                                    </div>
+                                    <div class="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button class="text-gray-400 hover:text-[#1256D4]"><i class="fas fa-download"></i></button>
+                                        <button class="text-gray-400 hover:text-[#1256D4]"><i class="fas fa-eye"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- ———— 右侧：全新优化 审核进度 ———— -->
+                    <div class="lg:w-80 bg-gray-50 border-l border-gray-200 p-6 overflow-y-auto scrollbar-hide shrink-0">
+                        <h3 class="font-bold text-gray-800 mb-6 flex items-center gap-2">
+                            <i class="fas fa-stream text-[#1256D4]"></i>审核进度
+                        </h3>
+                        
+                        <div class="relative space-y-0 pl-2" id="timeline">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 底部 -->
+                <div class="bg-white border-t border-gray-100 px-6 py-4 flex items-center justify-between shrink-0">
+                    <div class="text-sm text-gray-500">
+                        最后更新：2026-01-13 08:00
+                    </div>
+                    <div class="flex gap-3">
+                        <button class="px-4 py-2 rounded-8 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium transition-colors">
+                            返回列表
+                        </button>
+                        <button class="px-6 py-2 rounded-8 bg-[#1256D4] text-white hover:bg-[#0e48b3] font-medium shadow-lg shadow-blue-100 transition-all transform hover:scale-105">
+                           审核计划
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ncItems = [
+            { id: 1, severity: 'general', severityText: '一般不符合', category: '资源性不符合', description: '查北京圣泽林生态果业有限公司有机转换认证材料，农事活动显示有种植白菜、萝卜；王致和（福建）食品有限公司有机认证材料，生产过程中有使用原辅料（酸浆、香辛料），但未见相关投入品符合性证据。', document: 'MSP301《有机产品认证管理方案》', clause: '9.2.1（8）对投入品记录和详细信息进行检查，信息至少包括名称、成份、来源、使用数量、使用理由和判定依据。', expanded: false },
+            { id: 2, severity: 'serious', severityText: '严重不符合', category: '系统性不符合', description: '公司未能提供2025年度内部审核和管理评审的完整记录，无法证实管理体系的持续适宜性和有效性。', document: 'MSP205《管理体系评审程序》', clause: '9.3.1 最高管理者应按策划的时间间隔对组织的质量管理体系进行评审。', expanded: false },
+            { id: 3, severity: 'general', severityText: '一般不符合', category: '实施性不符合', description: '现场审核发现，生产车间部分员工未按作业指导书要求佩戴防护用品，且未提供相关培训记录。', document: 'MSP108《生产作业指导书》', clause: '7.1.4 过程运行环境 - 组织应确定、提供并维护所需的环境，以运行过程，并获得合格产品和服务。', expanded: false },
+            { id: 4, severity: 'minor', severityText: '轻微不符合', category: '文件性不符合', description: '质量手册中引用的部分标准版本号已过期，未及时更新至最新有效版本。', document: 'MSP001《质量手册》', clause: '4.3 确定质量管理体系的范围', expanded: false },
+            { id: 5, severity: 'general', severityText: '一般不符合', category: '资源性不符合', description: '检测设备校准证书已过期，未能提供最新的有效校准证明，影响测量结果的有效性。', document: 'MSP302《监视和测量设备管理程序》', clause: '7.1.5.2 测量溯源', expanded: false },
+            { id: 6, severity: 'serious', severityText: '严重不符合', category: '系统性不符合', description: '关键工序控制参数未进行有效监控，连续3个月未记录温度控制数据，存在重大食品安全隐患。', document: 'MSP405《关键控制点监控程序》', clause: '8.5.1 生产和服务提供的控制', expanded: false }
+        ];
+
+        const timelineSteps = [
+            { id: 1, title: '下达通知', user: '张洋', time: '2025-09-12 13:09', status: 'completed', icon: 'fa-bell' },
+            { id: 2, title: '提交计划', user: '张三', time: '2026-01-13 08:00', status: 'completed', icon: 'fa-upload' },
+            { id: 3, title: '审核计划', user: '', time: '', status: 'active', icon: 'fa-search', desc: '等待审核人审核计划' },
+            { id: 4, title: '任务执行', user: '', time: '', status: 'pending', icon: 'fa-tasks', desc: '等待审核人审核计划' },
+            { id: 5, title: '提交材料', user: '', time: '', status: 'pending', icon: 'fa-file-import', desc: '等待审核人审核计划' },
+            { id: 6, title: '审核通过', user: '', time: '', status: 'pending', icon: 'fa-check-circle', desc: '等待审核人审核计划' }
+        ];
+
+        const severityConfig = {
+            serious: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', icon: 'fa-exclamation-circle' },
+            general: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', icon: 'fa-exclamation-triangle' },
+            minor: { bg: 'bg-blue-50', text: 'text-[#1256D4]', border: 'border-blue-200', icon: 'fa-info-circle' }
+        };
+
+        function renderNCItems() {
+            const container = document.getElementById('ncItemsContainer');
+            container.innerHTML = ncItems.map((item, index) => {
+                const config = severityConfig[item.severity];
+                return `
+                    <div class="bg-white border border-gray-200 rounded-8 overflow-hidden hover-lift severity-indicator severity-${item.severity}" data-id="${item.id}">
+                        <div class="p-4 cursor-pointer flex items-start gap-4" onclick="toggleItem(${item.id})">
+                            <div class="shrink-0 mt-1">
+                                <div class="w-8 h-8 rounded-8 ${config.bg} ${config.text} flex items-center justify-center font-bold text-sm border ${config.border}">${index + 1}</div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-8 text-xs font-semibold ${config.bg} ${config.text} border ${config.border}">
+                                        <i class="fas ${config.icon} text-xs"></i>${item.severityText}
+                                    </span>
+                                    <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-8">${item.category}</span>
+                                </div>
+                                <p class="text-sm text-gray-700 line-clamp-2 leading-relaxed">${item.description}</p>
+                            </div>
+                            <div class="shrink-0 flex items-center gap-3">
+                                <button class="text-gray-400 hover:text-gray-600 transition-colors" onclick="event.stopPropagation()"><i class="far fa-edit"></i></button>
+                                <i class="fas fa-chevron-down text-gray-400 transition-transform duration-200" id="chevron-${item.id}" style="${item.expanded ? 'transform: rotate(180deg);' : ''}"></i>
+                            </div>
+                        </div>
+                        <div class="${item.expanded ? 'block' : 'hidden'} border-t border-gray-100 bg-gray-50/50" id="detail-${item.id}">
+                            <div class="p-4 space-y-3">
+                                <div class="grid grid-cols-1 gap-3">
+                                    <div class="bg-white rounded-8 p-3 border border-gray-200"><label class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">不符合条款</label><p class="text-sm text-gray-700">${item.clause}</p></div>
+                                    <div class="bg-white rounded-8 p-3 border border-gray-200"><label class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">依据文件</label><p class="text-sm text-gray-700 font-medium">${item.document}</p></div>
+                                </div>
+                                <div class="flex justify-end gap-2 pt-2">
+                                    <button class="text-xs px-3 py-1.5 rounded-8 border border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors"><i class="fas fa-paperclip mr-1"></i>添加附件</button>
+                                    <button class="text-xs px-3 py-1.5 rounded-8 bg-[#1256D4] text-white hover:bg-[#0e48b3] transition-colors"><i class="fas fa-check mr-1"></i>标记整改</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ———— 【全新】渲染优化后的进度条 ————
+        function renderTimeline() {
+            const container = document.getElementById('timeline');
+            container.innerHTML = timelineSteps.map((step) => {
+                const statusClass = step.status === 'completed' ? 'step-completed' : step.status === 'active' ? 'step-active' : '';
+                
+                let iconStyle = '';
+                if(step.status === 'completed'){
+                    iconStyle = 'bg-[#1256D4] text-white shadow-md shadow-blue-100';
+                }else if(step.status === 'active'){
+                    iconStyle = 'bg-[#1256D4] text-white ring-4 ring-blue-100';
+                }else{
+                    iconStyle = 'bg-gray-200 text-gray-400';
+                }
+
+                const icon = step.status === 'completed' ? 'fa-check' : step.icon;
+                
+                return `
+                    <div class="step-item relative pb-8 ${statusClass}">
+                        <div class="step-line"></div>
+                        <div class="absolute left-0 top-0 w-10 h-10 rounded-8 ${iconStyle} flex items-center justify-center z-10">
+                            <i class="fas ${icon} text-sm"></i>
+                        </div>
+                        <div class="pl-14 pt-1">
+                            <h4 class="font-semibold text-gray-900 text-sm ${step.status === 'pending' ? 'text-gray-400' : ''}">${step.title}</h4>
+                            ${step.user ? `<p class="text-xs text-gray-600 mt-0.5">${step.user}</p>` : ''}
+                            ${step.time ? `<p class="text-xs text-gray-400 mt-1 font-mono">${step.time}</p>` : ''}
+                            ${step.desc ? `<p class="text-xs text-gray-500 mt-1.5 bg-white rounded-8 px-3 py-2 inline-block border border-gray-100">${step.desc}</p>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleItem(id) {
+            const item = ncItems.find(i => i.id === id);
+            item.expanded = !item.expanded;
+            const detail = document.getElementById(`detail-${id}`);
+            const chevron = document.getElementById(`chevron-${id}`);
+            detail.classList.toggle('hidden', !item.expanded);
+            chevron.style.transform = item.expanded ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+
+        function toggleAllItems() {
+            const allExpanded = ncItems.every(i => i.expanded);
+            ncItems.forEach(item => item.expanded = !allExpanded);
+            renderNCItems();
+            document.getElementById('toggleAllText').textContent = allExpanded ? '展开全部' : '收起全部';
+        }
+
+        function openModal() {
+            const modal = document.getElementById('modal');
+            const content = document.getElementById('modalContent');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                content.classList.remove('scale-95', 'opacity-0');
+                content.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            const content = document.getElementById('modalContent');
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        renderNCItems();
+        renderTimeline();
+        
+        window.onload = () => {
+            setTimeout(openModal, 500);
+        };
+    </script>
+</body>
+</html>
